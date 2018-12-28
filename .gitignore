@@ -1,0 +1,7 @@
+*.log
+*.db
+
+const.go
+
+testFCM
+
