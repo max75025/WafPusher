@@ -14,7 +14,7 @@ func getJsonAttack(apiKey string, startTime int, endTime int) (string, error) {
 	if startTime<0 || endTime<0{
 		return "", errTimeLessZero
 	}
-	url := "http://wafwaf.tech/eventclient/" + apiKey + "/" + strconv.Itoa(startTime) + "/" + strconv.Itoa(endTime)
+	url := "http://2waf.com/eventclient/" + apiKey + "/" + strconv.Itoa(startTime) + "/" + strconv.Itoa(endTime)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "null", err
@@ -32,7 +32,7 @@ func getJsonAV(apiKey string, startTime int, endTime int) (string, error) {
 	if startTime<0 || endTime<0{
 		return "", errTimeLessZero
 	}
-	url := "http://wafwaf.tech/eventav/" + apiKey + "/" + strconv.Itoa(startTime) + "/" + strconv.Itoa(endTime)
+	url := "http://2waf.com/eventav/" + apiKey + "/" + strconv.Itoa(startTime) + "/" + strconv.Itoa(endTime)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "null", err

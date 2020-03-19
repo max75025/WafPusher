@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"github.com/max75025/fcm"
-	"net/http"
-	"errors"
-	"os"
 	"database/sql"
+	"errors"
+	"net/http"
+	"os"
+	//"github.com/max75025/fcm"
+	"wafFCM/fcm-library"
 )
 
 var cache cacheStorage
@@ -20,7 +21,6 @@ func init() {
 	db,err = openDB(dbFilePath)
 	if err!=nil{panic(err)}
 	cache.Refresh()
-	//fmt.Println(cache)
 	return
 }
 
@@ -107,16 +107,13 @@ func SendNotification(apiKey string, title string, body string) error {
 		idApiKey:= cache.GetID(apiKey)
 
 		for i,r:= range response.Results{
-			//fmt.Println(r.Error, " ", i)
 			if r.Error == "NotRegistered"{
-				//fmt.Println(allFcmDevices.tokens[i])
 				err = deleteToken(db, allFcmDevices.tokens[i], idApiKey)
 				if err!=nil{saveLog(err)}
 				fmt.Println("delete not registred tokens")
 				cache.Refresh()
 			}
 		}
-
 	}
 
 	return nil
@@ -138,7 +135,7 @@ func deleteFCM(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(w,"true")
 	} else {
-		fmt.Fprintf(w, "sorry only POST");
+		fmt.Fprintf(w, "sorry only POST")
 	}
 }
 
@@ -146,8 +143,7 @@ func addNewFCM(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		token := r.FormValue("FCMtoken")
 		apiKey := r.FormValue("ApiKey")
-		//timeUnix := int(time.Now().Unix())
-		//var id int
+
 
 		if d, ok := cache.Get(apiKey); !ok {
 			result, err := addApiKey(db, apiKey, 0, 0)
@@ -182,7 +178,7 @@ func addNewFCM(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "true")
 		fmt.Println("add new fcm")
 	} else {
-		fmt.Fprintf(w, "sorry only POST");
+		fmt.Fprintf(w, "sorry only POST")
 	}
 }
 
@@ -203,6 +199,6 @@ func main() {
 	http.HandleFunc("/deleteFCM/", deleteFCM)
 	http.HandleFunc("/addNewFCM/", addNewFCM)
 	fmt.Println("listen and serve...")
-	log.Fatal(http.ListenAndServe(":1313", nil))
+	log.Fatal(http.ListenAndServe(":8877", nil))
 
 }

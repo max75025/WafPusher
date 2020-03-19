@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/max75025/go-sqlmock"
+	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
 	"fmt"
 	"reflect"
