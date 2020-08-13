@@ -70,7 +70,7 @@ func checker() {
 				continue
 			}
 			if av!="null"{
-				SendNotification(i,"антивирус","событие файловой системы")
+				SendNotification(i,"файлы","событие файловой системы")
 				updateAVTime(db,i,timeNow)
 			}
 
