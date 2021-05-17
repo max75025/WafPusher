@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"os"
-	//"github.com/max75025/fcm"
+	"time"
 	"wafFCM/fcm-library"
 )
 
@@ -19,27 +19,18 @@ var db	  *sql.DB
 func init() {
 	var err error
 	db,err = openDB(dbFilePath)
-	if err!=nil{panic(err)}
+	if err!=nil{
+		log.Println(err)
+		os.Exit(1)
+	}
 	cache.Refresh()
-	return
 }
 
-func saveLog(s error) {
-	log.Println(s)
-	f, err := os.OpenFile("error.log", os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		f, err = os.Create("error.log")
-		if err != nil {
-			panic(err)
-		}
-	}
-	defer f.Close()
-	log.SetOutput(f)
-	log.Println(s)
-}
+
 
 func SendNotification(apiKey string, title string, body string) error {
-	fmt.Println("sendNotification")
+
+
 	allFcmDevices, ok := cache.Get(apiKey)
 	if !ok {
 		return errNotFindDataForApiKey
@@ -55,8 +46,8 @@ func SendNotification(apiKey string, title string, body string) error {
 	}
 
 	data := map[string]string{
-		"msg": "Hello World1",
-		"sum": "Happy Day",
+		"msg": "MSG",
+		"sum": "SUM",
 	}
 	c := fcm.NewFCM(fcm_server_api_key)
 
@@ -76,24 +67,11 @@ func SendNotification(apiKey string, title string, body string) error {
 		return err
 	}
 
-	fmt.Println("Status Code   :", response.StatusCode)
-	fmt.Println("Success       :", response.Success)
-	fmt.Println("Fail          :", response.Fail)
-	fmt.Println("Canonical_ids :", response.CanonicalIDs)
-	fmt.Println("Topic MsgId   :", response.MsgID)
 
 
 
 	if response.Fail > 0 {
-		f, err := os.OpenFile("badNotify.log", os.O_APPEND|os.O_WRONLY, 0666)
-		if err != nil {
-			f, err = os.Create("badNotify.log")
-			if err != nil {
-				panic(err)
-			}
-		}
-		defer f.Close()
-		log.SetOutput(f)
+
 		log.Println("apiKey		  :", apiKey)
 		log.Println("tokens		  :", allFcmDevices.tokens)
 		log.Println("Status Code   :", response.StatusCode)
@@ -109,7 +87,7 @@ func SendNotification(apiKey string, title string, body string) error {
 		for i,r:= range response.Results{
 			if r.Error == "NotRegistered"{
 				err = deleteToken(db, allFcmDevices.tokens[i], idApiKey)
-				if err!=nil{saveLog(err)}
+				if err!=nil{log.Printf("%+v\n",err)}
 				fmt.Println("delete not registred tokens")
 				cache.Refresh()
 			}
@@ -130,7 +108,7 @@ func deleteFCM(w http.ResponseWriter, r *http.Request) {
 		idApiKey:= cache.GetID(apiKey)
 		err:=deleteToken(db, token, idApiKey)
 		if err!=nil{
-			saveLog(err)
+			log.Printf("%+v\n",err)
 			return
 		}
 		fmt.Fprintf(w,"true")
@@ -148,18 +126,18 @@ func addNewFCM(w http.ResponseWriter, r *http.Request) {
 		if d, ok := cache.Get(apiKey); !ok {
 			result, err := addApiKey(db, apiKey, 0, 0)
 			if err != nil {
-				saveLog(err)
+				log.Printf("%+v\n",err)
 				return
 			}
 			i64, err := result.LastInsertId()
 			if err != nil {
-				saveLog(err)
+				log.Printf("%+v\n",err)
 				return
 			}
 			id := int(i64)
 			_,err = addToken(db, id, token)
 			if err != nil {
-				saveLog(err)
+				log.Printf("%+v\n",err)
 				return
 			}
 		} else {
@@ -167,12 +145,11 @@ func addNewFCM(w http.ResponseWriter, r *http.Request) {
 			if !contain{
 				_,err := addToken(db , d.idApiKey, token)
 				if err != nil {
-					saveLog(err)
+					log.Printf("%+v\n",err)
 					return
 				}
 			}
 		}
-
 
 		cache.Refresh()
 		fmt.Fprintf(w, "true")
@@ -193,12 +170,36 @@ func isContain(ss string, contain []string)bool{
 
 
 func main() {
-	saveLog(errors.New("start server..."))
+	//init logs
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile )
+	f, err := os.OpenFile("error.log", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		f, err = os.Create("error.log")
+		if err != nil {
+			panic(err)
+		}
+	}
+	defer f.Close()
+	log.SetOutput(f)
+
+
+	log.Println(errors.New("start server..."))
+
+
+
+
+
 	go checker()
 
 	http.HandleFunc("/deleteFCM/", deleteFCM)
 	http.HandleFunc("/addNewFCM/", addNewFCM)
 	fmt.Println("listen and serve...")
-	log.Fatal(http.ListenAndServe(":8877", nil))
+	serverTLS := http.Server{
+		Addr:         "0.0.0.0:8877",
+		ReadTimeout:  time.Duration(600) * time.Second,
+		WriteTimeout: time.Duration(600) * time.Second,
+		Handler:      nil,
+	}
+	log.Fatal(serverTLS.ListenAndServeTLS("cert.pem", "private.key"))
 
 }

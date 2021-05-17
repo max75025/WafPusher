@@ -1,11 +1,13 @@
 package main
 
 import (
-	"strconv"
-	"net/http"
+	"encoding/json"
+	"github.com/pkg/errors"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"strconv"
 	"time"
-	"fmt"
 )
 
 
@@ -49,29 +51,60 @@ func getJsonAV(apiKey string, startTime int, endTime int) (string, error) {
 func checker() {
 
 	for {
-		fmt.Println("check...")
 		timeNow := int(time.Now().Unix())
 		accounts := cache.GetAll()
 		for i, d := range accounts {
 			attack, err := getJsonAttack(i, d.lastNotifyAttack+1, timeNow)
 			if err != nil {
-				saveLog(err)
+				log.Printf("%+v\n",err)
+				log.Println(errors.New("response:" + attack))
 				continue
 			}
-			if attack!="null"{
-				SendNotification(i,"атака","на вас была совершена атака")
-				updateAttackTime(db,i, timeNow)
 
+			var at []Attack
+
+			err = json.Unmarshal([]byte(attack), &at)
+			if err!=nil{
+				log.Printf("%+v\n",err)
+				log.Println(errors.New("response:" + attack))
+				continue
+			}
+
+			if len(at)>0{
+				err  = updateAttackTime(db,i, timeNow)
+				if err!=nil{
+					log.Printf("%+v\n",errors.Wrap(err, "update attack time in database error"))
+				}else{
+					err = SendNotification(i,"атака","на вас была совершена атака")
+					if err!=nil{log.Printf("%+v\n",errors.Wrap(err, "send attack push error"))}
+				}
 			}
 
 			av, err := getJsonAV(i, d.lastNotifyAV+1, timeNow)
 			if err != nil {
-				saveLog(err)
+				log.Printf("%+v\n",err)
+				log.Println(errors.New("response:" + av))
 				continue
 			}
-			if av!="null"{
-				SendNotification(i,"файлы","событие файловой системы")
-				updateAVTime(db,i,timeNow)
+
+			var antiv []AV
+
+			err = json.Unmarshal([]byte(av), &antiv)
+			if err!=nil{
+				log.Printf("%+v\n",err)
+				log.Println(errors.New("response:" + av))
+				continue
+			}
+
+			if len(antiv)>0 {
+				err = updateAVTime(db,i,timeNow)
+				if err!=nil{
+					log.Printf("%+v\n",errors.Wrap(err, "update av time in database error"))
+				}else {
+					err = SendNotification(i, "мониторинг файлов", "событие файловой системы")
+					if err!=nil{log.Printf("%+v\n", errors.Wrap(err, "send antivirus push error"))}
+				}
+
 			}
 
 		}
